@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
@@ -17,7 +18,6 @@ const FeatureCard: React.FC<{ icon: React.ReactNode, title: string, description:
 );
 
 const LandingPage: React.FC<LandingPageProps> = () => {
-    const { userProfile } = useAuth();
     const [isContactModalOpen, setContactModalOpen] = useState(false);
 
     return (

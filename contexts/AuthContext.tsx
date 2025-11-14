@@ -33,7 +33,6 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const [userProfile, setUserProfile] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isDemoUser, setIsDemoUser] = useState(() => !!sessionStorage.getItem(DEMO_SESSION_KEY));
-     const [localDemoLeads, setLocalDemoLeads] = useState<Lead[]>([]);
 
 
     // Load demo data from localStorage if session is active
@@ -46,7 +45,6 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             if (demoUser) {
                 setAuthUser({ uid: demoUser.id } as AuthUser);
                 setUserProfile(demoUser);
-                setLocalDemoLeads(demoUser.leads || MOCK_LEADS);
             } else {
                 // If session says demo but no user data, create it.
                 handleDemoLogin(true);
@@ -143,7 +141,6 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
         sessionStorage.setItem(DEMO_SESSION_KEY, 'true');
         setAuthUser({ uid: demoUID } as AuthUser);
         setUserProfile(demoUserProfile);
-        setLocalDemoLeads(MOCK_LEADS);
         setIsDemoUser(true);
         if (!calledFromInit) return demoUserProfile;
         return null;
@@ -155,7 +152,6 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             setIsDemoUser(false);
             setAuthUser(null);
             setUserProfile(null);
-            setLocalDemoLeads([]);
         } else {
             auth.signOut();
         }

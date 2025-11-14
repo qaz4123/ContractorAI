@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LeadScore, Status, User, SubscriptionTier } from '../types';
+import { LeadScore, Status, SubscriptionTier } from '../types';
 import Header from '../components/Header';
 import LeadList from '../components/LeadList';
 import FilterModal from '../components/FilterModal';

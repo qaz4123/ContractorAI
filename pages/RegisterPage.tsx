@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../services/firebase';
-import { User } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
 interface RegisterPageProps {}

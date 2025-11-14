@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { Lead, Status, FinancingStatus, Quote, LeadSource, ProjectSchedule, ProjectPhaseStatus, FinancialTransaction, FinancialTransactionType, ChangeOrder, ActivityLogItem, User } from '../types';
+import { Lead, Status, FinancingStatus, Quote, LeadSource, ProjectSchedule, ProjectPhaseStatus, FinancialTransaction, FinancialTransactionType, ChangeOrder, ActivityLogItem } from '../types';
 import Header from '../components/Header';
 import CrmExportModal from '../components/CrmExportModal';
 import FinancingModal from '../components/FinancingModal';
