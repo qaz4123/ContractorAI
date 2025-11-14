@@ -1,5 +1,5 @@
 
-import * as functions from "firebase-functions";
+import { onRequest } from "firebase-functions/v2/https";
 import express from 'express';
 import * as admin from "firebase-admin";
 
@@ -20,4 +20,4 @@ app.get('/', (req, res) => {
 
 // Expose the express app as a Cloud Function called "api".
 // This name must match the function name in firebase.json rewrites.
-export const api = functions.https.onRequest(app as any);
+export const api = onRequest(app);
