@@ -1,15 +1,16 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import Header from '../components/Header';
 import { Lead, LeadScore, Status, FinancingStatus, Dossier, LeadSource } from '../types';
 import { getCoordsFromAddress } from '../services/geminiService';
+import { useLeads } from '../contexts/LeadsContext';
 
-interface AddLeadManuallyPageProps {
-    addLead: (lead: Omit<Lead, 'id'>) => void;
-}
+interface AddLeadManuallyPageProps {}
 
-const AddLeadManuallyPage: React.FC<AddLeadManuallyPageProps> = ({ addLead }) => {
+const AddLeadManuallyPage: React.FC<AddLeadManuallyPageProps> = () => {
+    const { addLead } = useLeads();
     const [ownerName, setOwnerName] = useState('');
     const [address, setAddress] = useState('');
     const [phone, setPhone] = useState('');

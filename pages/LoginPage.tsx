@@ -3,14 +3,13 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../services/firebase';
-import { User } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 
-interface LoginPageProps {
-    onDemoLogin: () => Promise<User | null>;
-}
+interface LoginPageProps {}
 
-const LoginPage: React.FC<LoginPageProps> = ({ onDemoLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = () => {
+    const { handleDemoLogin } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -36,11 +35,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onDemoLogin }) => {
         }
     };
     
-    const handleDemoLogin = async () => {
+    const onDemoLogin = async () => {
         setError(null);
         setIsLoading(true);
         try {
-            const user = await onDemoLogin();
+            const user = await handleDemoLogin();
             if (user) {
                 navigate('/dashboard', { replace: true });
             } else {
@@ -147,7 +146,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onDemoLogin }) => {
 
                      <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200 text-center">
                         <p className="text-sm font-semibold text-slate-700 mb-2">Want to see it in action?</p>
-                        <button onClick={handleDemoLogin} disabled={isLoading} className="w-full text-sm bg-white border border-slate-300 text-slate-600 py-2.5 px-4 rounded-lg font-bold hover:bg-slate-100 transition-colors disabled:opacity-50">
+                        <button onClick={onDemoLogin} disabled={isLoading} className="w-full text-sm bg-white border border-slate-300 text-slate-600 py-2.5 px-4 rounded-lg font-bold hover:bg-slate-100 transition-colors disabled:opacity-50">
                             Log In as Demo User
                         </button>
                     </div>

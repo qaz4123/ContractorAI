@@ -4,15 +4,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { User } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
-interface RegisterPageProps {
-    onRegister: (details: {
-        email: string;
-        fullName: string;
-        companyName?: string;
-        industry?: string;
-    }) => Promise<User | null>;
-}
+interface RegisterPageProps {}
 
 const SocialButton: React.FC<{ provider: 'Google' | 'Facebook', onClick: () => void }> = ({ provider, onClick }) => {
     const isGoogle = provider === 'Google';
@@ -50,7 +44,8 @@ const Requirement: React.FC<{ met: boolean, text: string }> = ({ met, text }) =>
 );
 
 
-const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
+const RegisterPage: React.FC<RegisterPageProps> = () => {
+    const { handleRegister } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
@@ -104,7 +99,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister }) => {
         try {
             await createUserWithEmailAndPassword(auth, email, password);
             // After successful auth creation, create the user profile in Firestore
-            const userProfile = await onRegister({ email, fullName, companyName, industry });
+            const userProfile = await handleRegister({ email, fullName, companyName, industry });
             if (userProfile) {
                 navigate('/dashboard', { replace: true });
             } else {

@@ -47,7 +47,6 @@ const AdminDashboard: React.FC = () => {
         let totalLeads = 0;
         
         allUsers.forEach(user => {
-            // FIX: The `leads` property on User is optional. Provide an empty array as a fallback.
             totalLeads += (user.leads || []).length;
             (user.leads || []).forEach(lead => {
                 if (lead.projectedPlatformCommission) {

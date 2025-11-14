@@ -1,3 +1,4 @@
+
 import { User, Lead, AggregatedStats, MarketTrend } from '../types';
 
 const USERS_STORAGE_KEY = 'projectprospect_users';
@@ -7,7 +8,6 @@ const getAllPlatformLeads = (): Lead[] => {
         const savedUsers = localStorage.getItem(USERS_STORAGE_KEY);
         if (!savedUsers) return [];
         const users: User[] = JSON.parse(savedUsers);
-        // FIX: The `leads` property on User is optional. Provide an empty array as a fallback.
         return users.flatMap(user => user.leads || []);
     } catch (error) {
         console.error("Failed to fetch platform leads for analytics", error);

@@ -1,21 +1,17 @@
 
 import React, { useState } from 'react';
-// FIX: Changed import from Payment to FinancialTransaction and FinancialTransactionType to align with the current data model.
 import { FinancialTransaction, FinancialTransactionType } from '../types';
 
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // FIX: Prop type updated to accept a FinancialTransaction object.
   onSave: (payment: Omit<FinancialTransaction, 'id'>) => void;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onSave }) => {
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  // FIX: Renamed `method` to `category` to match FinancialTransaction type.
   const [category, setCategory] = useState<'Cash' | 'Credit Card' | 'Bank Transfer' | 'Other'>('Credit Card');
-  // FIX: Renamed `notes` to `description` to match FinancialTransaction type.
   const [description, setDescription] = useState('');
 
   if (!isOpen) return null;
@@ -24,7 +20,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onSave }) 
     e.preventDefault();
     if (!amount || Number(amount) <= 0) return;
 
-    // FIX: Changed saved object to match FinancialTransaction structure. Payments are considered Revenue.
     onSave({
       type: FinancialTransactionType.Revenue,
       amount: Number(amount),
@@ -64,7 +59,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onSave }) 
             </div>
              <div>
                 <label htmlFor="method" className="block text-sm font-medium text-slate-700">Payment Method</label>
-                {/* FIX: `value` and `onChange` now use the `category` state. */}
                 <select id="method" value={category} onChange={e => setCategory(e.target.value as any)} className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                     <option>Credit Card</option>
                     <option>Bank Transfer</option>
@@ -74,7 +68,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onSave }) 
             </div>
             <div>
                 <label htmlFor="notes" className="block text-sm font-medium text-slate-700">Notes (Optional)</label>
-                 {/* FIX: `value` and `onChange` now use the `description` state. */}
                  <textarea id="notes" value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="e.g., Initial deposit" className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
             </div>
             <div className="pt-2 flex gap-3">

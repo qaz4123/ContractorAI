@@ -1,13 +1,10 @@
 
 import React, { useState } from 'react';
-// FIX: Changed import from Payment to FinancialTransaction to align with the current data model.
 import { FinancialTransaction } from '../types';
 import PaymentModal from './PaymentModal';
 
 interface PaymentsProps {
-    // FIX: Prop type updated to FinancialTransaction array.
     payments: FinancialTransaction[];
-    // FIX: Prop type updated to accept a FinancialTransaction object.
     onAddPayment: (payment: Omit<FinancialTransaction, 'id'>) => void;
     formatCurrency: (value: number) => string;
     isArchived: boolean;
@@ -42,11 +39,9 @@ const Payments: React.FC<PaymentsProps> = ({ payments, onAddPayment, formatCurre
                     payments.map(payment => (
                         <div key={payment.id} className="flex justify-between items-center text-sm p-2 rounded hover:bg-slate-50">
                             <div>
-                                {/* FIX: Replaced `payment.method` with `payment.category`. */}
                                 <p className="font-medium text-slate-800">{formatCurrency(payment.amount)} <span className="text-xs text-slate-500 font-normal">({payment.category})</span></p>
                                 <p className="text-xs text-slate-500">{formatDate(payment.date)}</p>
                             </div>
-                            {/* FIX: Replaced `payment.notes` with `payment.description`. */}
                             {payment.description && <p className="text-xs text-slate-600 truncate max-w-xs" title={payment.description}>{payment.description}</p>}
                         </div>
                     ))

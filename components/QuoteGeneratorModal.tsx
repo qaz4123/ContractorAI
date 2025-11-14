@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Lead, Quote, QuoteLineItem } from '../types';
@@ -80,7 +81,6 @@ const QuoteGeneratorModal: React.FC<QuoteGeneratorModalProps> = ({ isOpen, onClo
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            // FIX: Explicitly type 'file' as 'File' to resolve type inference issue with URL.createObjectURL.
             const newImages = Array.from(e.target.files).map((file: File) => ({
                 file,
                 preview: URL.createObjectURL(file)

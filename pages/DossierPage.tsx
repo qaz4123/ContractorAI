@@ -26,15 +26,13 @@ import VoiceMemoModal from '../components/VoiceMemoModal';
 import { enrichDossier, summarizeDossierForContractor, generateDossier, enrichOwnerProfile } from '../services/geminiService';
 import { setCachedDossier } from '../services/dossierCache';
 import { calculateEquity, calculateLeadScore } from '../services/leadUtils';
+import { useAuth } from '../contexts/AuthContext';
+import { useLeads } from '../contexts/LeadsContext';
 
 
 declare const google: any;
 
-interface DossierPageProps {
-  user: User;
-  leads: Lead[];
-  updateLead: (lead: Lead) => void;
-}
+interface DossierPageProps {}
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
@@ -60,10 +58,13 @@ const FinancingStatusBadge: React.FC<{ status: FinancingStatus }> = ({ status })
     );
 };
 
-const DossierPage: React.FC<DossierPageProps> = ({ user, leads, updateLead }) => {
+const DossierPage: React.FC<DossierPageProps> = () => {
   const { id } = useParams<{ id: string }>();
+  const { userProfile } = useAuth();
+  const { leads, updateLead } = useLeads();
   
   const currentLead = leads.find(l => l.id === id);
+  const user = userProfile!;
 
   const [isScoreBreakdownVisible, setIsScoreBreakdownVisible] = useState(false);
   const [isCrmModalOpen, setCrmModalOpen] = useState(false);
@@ -87,7 +88,6 @@ const DossierPage: React.FC<DossierPageProps> = ({ user, leads, updateLead }) =>
 
   useEffect(() => {
     const checkApi = () => {
-        // FIX: Replaced 'window.google' with 'google' to resolve TypeScript error.
         if (typeof google !== 'undefined' && google.maps) {
             setIsMapApiLoaded(true);
             return true;
@@ -399,7 +399,7 @@ const DossierPage: React.FC<DossierPageProps> = ({ user, leads, updateLead }) =>
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-100">
-      <Header title="Property Dossier" showBackButton onExportClick={() => setCrmModalOpen(true)} onArchiveClick={handleArchiveToggle} isArchived={currentLead.isArchived} user={user} />
+      <Header title="Property Dossier" showBackButton onExportClick={() => setCrmModalOpen(true)} onArchiveClick={handleArchiveToggle} isArchived={currentLead.isArchived} />
       
       <main className="flex-grow p-4 md:p-6 pb-28 relative">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -452,7 +452,7 @@ const DossierPage: React.FC<DossierPageProps> = ({ user, leads, updateLead }) =>
 
             <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-slate-200 space-y-4">
                  <h2 className="text-lg font-semibold text-slate-800">Property & Owner Profile</h2>
-                 <div className="w-full h-40 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 relative"> {currentLead.propertyImage ? (<div className="relative group"><img src={currentLead.propertyImage} alt="Property" className="w-full h-40 object-cover rounded-lg" /><button onClick={handlePhotoClick} disabled={currentLead.isArchived} className="absolute bottom-2 right-2 bg-black/50 text-white text-xs font-semibold px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity disabled:hidden">Change</button></div>) : (<div className="w-full h-40 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 relative">{/* FIX: Replaced 'window.google' with 'google' to resolve TypeScript error. */}{isMapApiLoaded && typeof google !== 'undefined' && google.maps ? (<div ref={mapRef} className="w-full h-full rounded-lg"></div>) : (<div className="w-full h-full flex items-center justify-center text-slate-500">Loading map...</div>)}<div className="absolute bottom-2 left-1/2 -translate-x-1/2"><button onClick={handlePhotoClick} disabled={currentLead.isArchived} className="bg-white text-slate-700 text-sm font-semibold py-1.5 px-4 rounded-full hover:bg-slate-50 border border-slate-300 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Add Photo</button></div></div>)}<input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" capture="environment" /></div>
+                 <div className="w-full h-40 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 relative"> {currentLead.propertyImage ? (<div className="relative group"><img src={currentLead.propertyImage} alt="Property" className="w-full h-40 object-cover rounded-lg" /><button onClick={handlePhotoClick} disabled={currentLead.isArchived} className="absolute bottom-2 right-2 bg-black/50 text-white text-xs font-semibold px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity disabled:hidden">Change</button></div>) : (<div className="w-full h-40 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 relative">{isMapApiLoaded && typeof google !== 'undefined' && google.maps ? (<div ref={mapRef} className="w-full h-full rounded-lg"></div>) : (<div className="w-full h-full flex items-center justify-center text-slate-500">Loading map...</div>)}<div className="absolute bottom-2 left-1/2 -translate-x-1/2"><button onClick={handlePhotoClick} disabled={currentLead.isArchived} className="bg-white text-slate-700 text-sm font-semibold py-1.5 px-4 rounded-full hover:bg-slate-50 border border-slate-300 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Add Photo</button></div></div>)}<input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" capture="environment" /></div>
                  <div><h3 className="font-semibold text-slate-700 text-base">Core Stats</h3><p className="mt-1 text-sm text-slate-600">{dossier.propertyDetails.yearBuilt} build, {dossier.propertyDetails.sqFootage} sqft, {dossier.propertyDetails.bedrooms} beds, {dossier.propertyDetails.bathrooms} baths</p></div>
                  <div><h3 className="font-semibold text-slate-700 text-base">Demographics</h3><p className="mt-1 text-sm text-slate-600">{dossier.demographics.lifeStageProfile}, Age ~{dossier.demographics.estOwnerAgeRange}, Income {dossier.demographics.estHouseholdIncome}</p></div>
                 {(dossier.ownerProfile?.phone || dossier.ownerProfile?.email) && (

@@ -1,13 +1,10 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
-import { User, SubscriptionTier } from '../types';
+import { SubscriptionTier } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
-interface PricingPageProps {
-    user: User | null;
-    onLogout: () => void;
-}
+interface PricingPageProps {}
 
 const PricingCard: React.FC<{ 
     tier: string, 
@@ -55,10 +52,14 @@ const PricingCard: React.FC<{
     </div>
 );
 
-const PricingPage: React.FC<PricingPageProps> = ({ user, onLogout }) => {
+const PricingPage: React.FC<PricingPageProps> = () => {
+    const { userProfile } = useAuth();
+    const user = userProfile;
+
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-            <Header user={user} onLogout={onLogout} />
+            {/* FIX: Removed `user` and `onLogout` props as they are not defined on the Header component and are handled by the AuthContext within the Header itself. */}
+            <Header />
             
             <main className="flex-grow py-20 px-4">
                 <div className="max-w-5xl mx-auto text-center mb-16">

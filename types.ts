@@ -240,7 +240,6 @@ export interface User {
   industry?: string;
   subscriptionTier: SubscriptionTier;
   isDemo?: boolean;
-  // FIX: Add optional `leads` property for analytics features.
   leads?: Lead[];
 }
 

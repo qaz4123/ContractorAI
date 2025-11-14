@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lead } from '../types';
@@ -19,7 +20,6 @@ const MapView: React.FC<MapViewProps> = ({ leads, onMapClick }) => {
     // Effect to check when Google Maps API is loaded
     useEffect(() => {
         const checkApi = () => {
-            // FIX: Replaced 'window.google' with 'google' to resolve TypeScript error.
             if (typeof google !== 'undefined' && google.maps) {
                 setIsMapApiLoaded(true);
                 return true;

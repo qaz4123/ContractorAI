@@ -1,22 +1,25 @@
 
 import React, { useState } from 'react';
-import { User, SubscriptionTier } from '../types';
+import { SubscriptionTier } from '../types';
 import Header from '../components/Header';
+import { useAuth } from '../contexts/AuthContext';
 
-interface BillingPageProps {
-    user: User;
-    onLogout: () => void;
-    onUpgrade: (tier: SubscriptionTier) => void;
-}
+interface BillingPageProps {}
 
-const BillingPage: React.FC<BillingPageProps> = ({ user, onLogout, onUpgrade }) => {
+const BillingPage: React.FC<BillingPageProps> = () => {
+    const { userProfile, upgradeTier } = useAuth();
     const [isUpgrading, setIsUpgrading] = useState(false);
+
+    if (!userProfile) {
+        return null; // Or loading state
+    }
+    const user = userProfile;
 
     const handleUpgradeToPro = () => {
         setIsUpgrading(true);
         // Simulate API call for payment processing
         setTimeout(() => {
-            onUpgrade(SubscriptionTier.Pro);
+            upgradeTier(SubscriptionTier.Pro);
             setIsUpgrading(false);
             alert("Successfully upgraded to Pro tier!");
         }, 2000);
@@ -24,7 +27,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ user, onLogout, onUpgrade }) 
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-100">
-             <Header title="Billing & Subscription" user={user} onLogout={onLogout} showBackButton />
+             <Header title="Billing & Subscription" showBackButton />
 
              <main className="flex-grow p-4 md:p-6">
                 <div className="max-w-3xl mx-auto space-y-6">

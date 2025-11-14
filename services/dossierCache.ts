@@ -1,7 +1,6 @@
-
 import { Dossier } from '../types';
 
-const CACHE_KEY = 'contractorai_dossier_cache';
+const CACHE_KEY = 'projectprospect_dossier_cache';
 
 // Get the cache object from localStorage
 const getCache = (): Record<string, Dossier> => {

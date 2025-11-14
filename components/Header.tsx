@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { User, SubscriptionTier } from '../types';
+import { SubscriptionTier } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
   title?: string;
@@ -10,13 +11,13 @@ interface HeaderProps {
   onExportClick?: () => void;
   onArchiveClick?: () => void;
   isArchived?: boolean;
-  user?: User | null;
-  onLogout?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ title, showBackButton, onFilterClick, onExportClick, onArchiveClick, isArchived, user, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ title, showBackButton, onFilterClick, onExportClick, onArchiveClick, isArchived }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { userProfile, handleLogout } = useAuth();
+  const user = userProfile;
 
   const isPublicPage = ['/', '/pricing'].includes(location.pathname);
   const isDashboard = location.pathname === '/dashboard';
@@ -106,13 +107,13 @@ const Header: React.FC<HeaderProps> = ({ title, showBackButton, onFilterClick, o
                         )}
                         {onFilterClick && (
                             <button onClick={onFilterClick} className="text-slate-500 p-2 rounded-full hover:bg-slate-100 hover:text-slate-700 transition-colors" title="Filter Leads">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L12 14.414V19a1 1 0 01-1.447.894l-4-2A1 1 0 016 17v-2.586L3.293 6.707A1 1 0 013 6V4z" />
                                 </svg>
                             </button>
                         )}
-                        {onLogout && (
-                            <button onClick={onLogout} className="text-slate-400 p-2 rounded-full hover:bg-red-50 hover:text-red-600 transition-colors" title="Logout">
+                        {handleLogout && (
+                            <button onClick={handleLogout} className="text-slate-400 p-2 rounded-full hover:bg-red-50 hover:text-red-600 transition-colors" title="Logout">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
                                 </svg>

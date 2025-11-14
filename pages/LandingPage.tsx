@@ -1,14 +1,10 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
-import { User } from '../types';
 import ContactUsModal from '../components/ContactUsModal';
+import { useAuth } from '../contexts/AuthContext';
 
-interface LandingPageProps {
-    user: User | null;
-    onLogout: () => void;
-}
+interface LandingPageProps {}
 
 const FeatureCard: React.FC<{ icon: React.ReactNode, title: string, description: string }> = ({ icon, title, description }) => (
     <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all hover:-translate-y-1">
@@ -20,12 +16,14 @@ const FeatureCard: React.FC<{ icon: React.ReactNode, title: string, description:
     </div>
 );
 
-const LandingPage: React.FC<LandingPageProps> = ({ user, onLogout }) => {
+const LandingPage: React.FC<LandingPageProps> = () => {
+    const { userProfile } = useAuth();
     const [isContactModalOpen, setContactModalOpen] = useState(false);
 
     return (
         <div className="min-h-screen bg-white flex flex-col font-sans">
-            <Header user={user} onLogout={onLogout} />
+            {/* FIX: Removed `user` and `onLogout` props as they are not defined on the Header component and are handled by the AuthContext within the Header itself. */}
+            <Header />
             
             <main className="flex-grow">
                 {/* Hero Section */}

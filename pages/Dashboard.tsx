@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lead, LeadScore, Status, User, SubscriptionTier } from '../types';
+import { LeadScore, Status, User, SubscriptionTier } from '../types';
 import Header from '../components/Header';
 import LeadList from '../components/LeadList';
 import FilterModal from '../components/FilterModal';
@@ -9,15 +9,19 @@ import MapView from '../components/MapView';
 import DashboardAnalytics from '../components/DashboardAnalytics';
 import AddLeadOptions from '../components/AddLeadOptions';
 import KanbanBoard from '../components/KanbanBoard';
+import { useAuth } from '../contexts/AuthContext';
+import { useLeads } from '../contexts/LeadsContext';
 
-interface DashboardProps {
-  user: User;
-  leads: Lead[];
-  onLogout: () => void;
-}
-
-const Dashboard: React.FC<DashboardProps> = ({ user, leads, onLogout }) => {
+const Dashboard: React.FC = () => {
+  const { userProfile } = useAuth();
+  const { leads } = useLeads();
+  
+  if (!userProfile) {
+    return null; // Or a loading state, though route protection should prevent this
+  }
+  const user = userProfile;
   const { subscriptionTier } = user;
+
   const navigate = useNavigate();
   const [view, setView] = useState<'list' | 'board' | 'map'>('list');
   const [isFilterModalOpen, setFilterModalOpen] = useState(false);
@@ -63,8 +67,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, leads, onLogout }) => {
       <Header 
         title="Dashboard"
         onFilterClick={() => setFilterModalOpen(true)}
-        user={user}
-        onLogout={onLogout}
       />
       
       <main className="flex-grow overflow-y-auto p-4 md:p-8 pb-28">

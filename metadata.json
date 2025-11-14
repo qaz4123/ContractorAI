@@ -1,5 +1,5 @@
 {
-  "name": "Copy of ContractorAI",
+  "name": "ContractorAI",
   "description": "A lead qualification app for contractors that generates a detailed 'Dossier' on properties and homeowners using AI, helping them prioritize high-potential projects and offer integrated financing.",
   "requestFramePermissions": [
     "geolocation",

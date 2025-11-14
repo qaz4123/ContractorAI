@@ -3,18 +3,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { generateDossier, getAddressFromCoords, getCoordsFromAddress } from '../services/geminiService';
-import { Dossier, Lead, Status, FinancingStatus, LeadSource, GroundingChunk, User } from '../types';
+import { Dossier, Lead, Status, FinancingStatus, LeadSource, GroundingChunk } from '../types';
 import Header from '../components/Header';
 import { getCachedDossier, setCachedDossier } from '../services/dossierCache';
 import { calculateEquity, calculateLeadScore } from '../services/leadUtils';
+import { useAuth } from '../contexts/AuthContext';
+import { useLeads } from '../contexts/LeadsContext';
 
 // Declare google for global Google Maps API
 declare const google: any;
 
-interface AddLeadPageProps {
-    addLead: (lead: Omit<Lead, 'id'>) => void;
-    user: User | null;
-}
+interface AddLeadPageProps {}
 
 const LOADING_MESSAGES = [
     'Analyzing property records...',
@@ -26,7 +25,11 @@ const LOADING_MESSAGES = [
     'Almost there...',
 ];
 
-const AddLeadPage: React.FC<AddLeadPageProps> = ({ addLead, user }) => {
+const AddLeadPage: React.FC<AddLeadPageProps> = () => {
+    const { userProfile } = useAuth();
+    const { addLead } = useLeads();
+    const user = userProfile;
+    
     const [address, setAddress] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isGeolocating, setIsGeolocating] = useState(false);
@@ -37,7 +40,6 @@ const AddLeadPage: React.FC<AddLeadPageProps> = ({ addLead, user }) => {
 
     useEffect(() => {
         // Initialize Google Maps Autocomplete
-        // FIX: Replaced 'window.google' with 'google' to resolve TypeScript error.
         if (typeof google !== 'undefined' && typeof google.maps !== 'undefined' && addressInputRef.current) {
             const autocomplete = new google.maps.places.Autocomplete(addressInputRef.current, {
                 types: ['address'],

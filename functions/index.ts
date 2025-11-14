@@ -1,3 +1,4 @@
+
 import * as functions from "firebase-functions";
 import express from 'express';
 import * as admin from "firebase-admin";
@@ -31,5 +32,4 @@ if (!process.env.FUNCTION_TARGET) {
 
 // Expose the express app as a Cloud Function called "api".
 // This name must match the function name in firebase.json rewrites.
-// FIX: Cast `app` to `any` to resolve a type incompatibility issue between the express app and the expected request handler type in `firebase-functions`. This is a common workaround for type definition mismatches that can occur with certain versions of these packages.
 export const api = functions.https.onRequest(app as any);
