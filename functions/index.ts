@@ -18,18 +18,6 @@ app.get('/', (req, res) => {
 // e.g., app.post('/users', ...) or app.get('/products', ...)
 // These would be accessed via /api/users, /api/products etc.
 
-// This block allows the Express app to run on Cloud Run, which requires
-// the server to listen on the port provided by the PORT environment variable.
-// The `FUNCTION_TARGET` check prevents this from running in the Firebase Functions
-// environment, where the server is started automatically.
-if (!process.env.FUNCTION_TARGET) {
-  const PORT = process.env.PORT || 8080;
-  app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-  });
-}
-
-
 // Expose the express app as a Cloud Function called "api".
 // This name must match the function name in firebase.json rewrites.
 export const api = functions.https.onRequest(app as any);
