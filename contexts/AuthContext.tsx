@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { onAuthStateChanged, User as AuthUser } from 'firebase/auth';
 import { doc, getDoc, setDoc, writeBatch, collection, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
-import { User, SubscriptionTier, Lead } from '../types';
+import { User, SubscriptionTier } from '../types';
 import { MOCK_LEADS } from '../constants';
 
 const DEMO_SESSION_KEY = 'projectprospect_demo_session';

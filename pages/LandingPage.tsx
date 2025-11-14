@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import ContactUsModal from '../components/ContactUsModal';
-import { useAuth } from '../contexts/AuthContext';
 
 interface LandingPageProps {}
 
