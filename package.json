@@ -3,14 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "workspaces": [
-    "functions"
-  ],
   "scripts": {
     "dev": "vite",
-    "build:frontend": "tsc && vite build",
-    "build:functions": "npm run build --workspace=functions",
-    "build": "npm run build:frontend && npm run build:functions",
+    "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
