@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { Lead, Status, FinancingStatus, Quote, LeadSource, ProjectSchedule, ProjectPhaseStatus, FinancialTransaction, FinancialTransactionType, ChangeOrder, ActivityLogItem } from '../types';
+import { Lead, Status, FinancingStatus, Quote, LeadSource, ProjectSchedule, ProjectPhaseStatus, FinancialTransaction, FinancialTransactionType, ChangeOrder, ActivityLogItem, Dossier, GroundingChunk } from '../types';
 import Header from '../components/Header';
 import CrmExportModal from '../components/CrmExportModal';
 import FinancingModal from '../components/FinancingModal';
@@ -326,23 +326,27 @@ const DossierPage: React.FC<DossierPageProps> = () => {
   const handleEnrichDossier = async (type: 'neighborhood' | 'owner') => {
       setIsEnriching(true);
       try {
-          const enrichmentFunction = type === 'owner' ? enrichOwnerProfile : enrichDossier;
           const dossierToEnrich = { ...currentLead.dossier };
-
-          // Clear old data for the specific enrichment type
-          if (type === 'neighborhood') {
-              dossierToEnrich.neighborhoodInfo = undefined;
-              dossierToEnrich.schoolRatings = undefined;
-              dossierToEnrich.recentPermits = undefined;
-          } else {
-              dossierToEnrich.ownerProfile = {
+          let enrichedDossier: Dossier;
+          let newChunks: GroundingChunk[] | undefined;
+          
+          if (type === 'owner') {
+             dossierToEnrich.ownerProfile = {
                   ...dossierToEnrich.ownerProfile,
                   email: undefined,
                   phone: undefined
               };
+             const result = await enrichOwnerProfile(dossierToEnrich, currentLead.address);
+             enrichedDossier = result.dossier;
+             newChunks = result.groundingChunks;
+          } else { // neighborhood
+              dossierToEnrich.neighborhoodInfo = undefined;
+              dossierToEnrich.schoolRatings = undefined;
+              dossierToEnrich.recentPermits = undefined;
+              const result = await enrichDossier(dossierToEnrich, currentLead.address, currentLead.coords);
+              enrichedDossier = result.dossier;
+              newChunks = result.groundingChunks;
           }
-
-          const { dossier: enrichedDossier, groundingChunks: newChunks } = await enrichmentFunction(dossierToEnrich, currentLead.address);
           
           const mergedChunks = [...(currentLead.groundingChunks || []), ...(newChunks || [])];
           const uniqueChunks = mergedChunks.filter((chunk, index, self) => index === self.findIndex((c) => ((c.web?.uri === chunk.web?.uri && c.web?.uri !== undefined) || (c.maps?.uri === chunk.maps?.uri && c.maps?.uri !== undefined))));

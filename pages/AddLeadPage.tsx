@@ -130,7 +130,7 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
                  // Short delay to show the message
                 await new Promise(resolve => setTimeout(resolve, 1000));
             } else {
-                const { dossier: newDossier, groundingChunks: newGroundingChunks } = await generateDossier(address, user?.industry);
+                const { dossier: newDossier, groundingChunks: newGroundingChunks } = await generateDossier(address, user?.industry, coords);
                 dossier = newDossier;
                 groundingChunks = newGroundingChunks;
                 setCachedDossier(address, dossier); // Save to cache

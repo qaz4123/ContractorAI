@@ -304,9 +304,9 @@ export const generateProjectSuggestions = async (dossier: Dossier, industry?: st
 };
 
 
-export const generateDossier = async (address: string, industry?: string): Promise<{ dossier: Dossier, groundingChunks: GroundingChunk[] | undefined }> => {
+export const generateDossier = async (address: string, industry?: string, coords?: { lat: number; lng: number }): Promise<{ dossier: Dossier, groundingChunks: GroundingChunk[] | undefined }> => {
   try {
-    const groundedResponse = await ai.models.generateContent({
+    const modelConfig: any = {
       model: "gemini-2.5-flash",
       contents: `Gather up-to-date and accurate real-world property and demographic information for the US address: ${address}.`,
       config: {
@@ -315,7 +315,20 @@ export const generateDossier = async (address: string, industry?: string): Promi
         **Prioritize finding the following essential information first: 1. Homeowner demographics (age, income). 2. Mortgage details (lender, balance). 3. Recent building permits.**
         All other information is secondary. Also, attempt to find a publicly listed, business-related email address or phone number for the owner.`
       },
-    });
+    };
+
+    if (coords) {
+        modelConfig.config.toolConfig = {
+            retrievalConfig: {
+                latLng: {
+                    latitude: coords.lat,
+                    longitude: coords.lng
+                }
+            }
+        };
+    }
+
+    const groundedResponse = await ai.models.generateContent(modelConfig);
 
     const context = groundedResponse.text;
     const groundingChunks = groundedResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
@@ -351,13 +364,21 @@ export const generateDossier = async (address: string, industry?: string): Promi
   }
 };
 
-export const enrichDossier = async (dossier: Dossier, address: string): Promise<{ dossier: Dossier, groundingChunks: GroundingChunk[] | undefined }> => {
+export const enrichDossier = async (dossier: Dossier, address: string, coords: { lat: number; lng: number }): Promise<{ dossier: Dossier, groundingChunks: GroundingChunk[] | undefined }> => {
     try {
         const groundedResponse = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: `Perform a deep dive for the following US address: ${address}. Find information on: 1. The neighborhood's general 'vibe', walkability score, and perceived crime rate. 2. Ratings or reputation of the local school district. 3. General trends in recent building permits or renovation activity in the immediate area. 4. Try to find direct URLs to official public records for this property (e.g., County Auditor, Assessor, GIS map).`,
             config: {
                 tools: [{googleSearch: {}}, {googleMaps: {}}],
+                 toolConfig: {
+                    retrievalConfig: {
+                        latLng: {
+                            latitude: coords.lat,
+                            longitude: coords.lng
+                        }
+                    }
+                },
                 systemInstruction: "You are a real estate data enrichment AI. Your task is to find specific, qualitative and quantitative neighborhood data to enrich a property dossier."
             },
         });
