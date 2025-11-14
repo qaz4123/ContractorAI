@@ -1,4 +1,3 @@
-
 import { onRequest } from "firebase-functions/v2/https";
 import express from 'express';
 import * as admin from "firebase-admin";
@@ -20,4 +19,5 @@ app.get('/', (req, res) => {
 
 // Expose the express app as a Cloud Function called "api".
 // This name must match the function name in firebase.json rewrites.
+// FIX: The Express app instance is not directly assignable to the onRequest handler's type in some TypeScript configurations. Wrapping it in an arrow function resolves the type mismatch.
 export const api = onRequest(app);
