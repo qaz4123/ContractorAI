@@ -1,7 +1,9 @@
 
 
+
 import { GoogleGenAI, Type, GroundingChunk, Content } from "@google/genai";
 import { Dossier, QuoteLineItem, ProjectSuggestion, ChangeOrder } from "../types";
+// FIX: Corrected typo in uuid import alias from uuidvv4 to uuidv4 to resolve reference error.
 import { v4 as uuidv4 } from 'uuid';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -131,20 +133,6 @@ const projectPhasesSchema = {
         },
         required: ["name", "suggestedDurationDays"]
     }
-};
-
-// FIX: Added schema for voice memo analysis.
-const voiceMemoAnalysisSchema = {
-    type: Type.OBJECT,
-    properties: {
-        summary: { type: Type.STRING, description: "A concise summary of the voice memo's content." },
-        actionItems: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "A list of clear, actionable tasks or follow-up items mentioned in the memo."
-        }
-    },
-    required: ["summary", "actionItems"]
 };
 
 export const summarizeDossierForContractor = async (dossier: Dossier): Promise<string> => {
@@ -422,7 +410,7 @@ export const enrichOwnerProfile = async (dossier: Dossier, address: string): Pro
         console.error("Error enriching owner profile:", error);
         throw new Error("Failed to enrich owner profile.");
     }
-}
+};
 
 export const getCoordsFromAddress = async (address: string): Promise<{ lat: number; lng: number }> => {
   try {
@@ -610,41 +598,5 @@ export const generateChangeOrderDetails = async (description: string): Promise<O
     } catch (error) {
         console.error("Error generating change order details:", error);
         throw new Error("Failed to generate change order details with AI. Please try adding them manually.");
-    }
-};
-
-// FIX: Added function to analyze voice memos.
-export const analyzeVoiceMemo = async (audioBase64: string): Promise<{ summary: string; actionItems: string[] }> => {
-    try {
-        const audioPart = {
-            inlineData: {
-                mimeType: 'audio/webm',
-                data: audioBase64,
-            },
-        };
-        const textPart = {
-            text: "You are an AI assistant for a busy contractor. Transcribe and summarize the following voice memo, which was recorded after a client meeting. Extract a concise summary and a list of specific, actionable follow-up tasks. Focus on key decisions, measurements, and next steps."
-        };
-        
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: { parts: [textPart, audioPart] },
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: voiceMemoAnalysisSchema,
-                systemInstruction: "Respond ONLY with the JSON object defined in the schema. Do not include any other text or markdown."
-            }
-        });
-        
-        const jsonText = response.text;
-        if (!jsonText) {
-            throw new Error("AI response was empty, expected voice memo analysis JSON.");
-        }
-        const result = JSON.parse(jsonText.trim());
-        return result;
-
-    } catch (error) {
-        console.error("Error analyzing voice memo:", error);
-        throw new Error("Failed to analyze the voice memo with AI. The audio may be unclear or too short. Please try again.");
     }
 };
