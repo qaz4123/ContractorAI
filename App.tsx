@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import DossierPage from './pages/DossierPage';
@@ -11,18 +12,35 @@ import PricingPage from './pages/PricingPage';
 import BillingPage from './pages/BillingPage';
 import AdminDashboard from './pages/AdminDashboard';
 import DemoBanner from './components/DemoBanner';
+import ApiKeyBanner from './components/ApiKeyBanner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LeadsProvider } from './contexts/LeadsContext';
 
+// Define gm_authFailure on the window object for Google Maps API error handling
+declare global {
+  interface Window {
+    gm_authFailure?: () => void;
+  }
+}
+
 function App() {
   const { authUser, userProfile, isLoading, isDemoUser } = useAuth();
+  const [isMapsApiOk, setIsMapsApiOk] = useState(true);
+
+  useEffect(() => {
+    // This global function is called by the Google Maps script if auth fails.
+    window.gm_authFailure = () => {
+      setIsMapsApiOk(false);
+    };
+  }, []);
 
    if (isLoading && !isDemoUser) {
     return <div className="flex items-center justify-center h-screen bg-slate-100"><div>Loading...</div></div>;
   }
 
   return (
-    <div className="bg-slate-100 min-h-screen font-sans">
+    <div className={`bg-slate-100 min-h-screen font-sans ${!isMapsApiOk ? 'pt-16 sm:pt-12' : ''}`}>
+        {!isMapsApiOk && <ApiKeyBanner />}
         <div>
             {isDemoUser && <DemoBanner />}
             <Routes>
