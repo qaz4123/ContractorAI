@@ -22,7 +22,6 @@ import DataIntegrations from '../components/DataIntegrations';
 import OutreachGeneratorModal from '../components/OutreachGeneratorModal';
 import DossierChat from '../components/DossierChat';
 import MarketInsights from '../components/MarketInsights';
-import VoiceMemoModal from '../components/VoiceMemoModal';
 import { enrichDossier, summarizeDossierForContractor, generateDossier, enrichOwnerProfile } from '../services/geminiService';
 import { setCachedDossier } from '../services/dossierCache';
 import { calculateEquity, calculateLeadScore } from '../services/leadUtils';
@@ -75,7 +74,6 @@ const DossierPage: React.FC<DossierPageProps> = () => {
   const [isFinanceModalOpen, setFinanceModalOpen] = useState(false);
   const [isChangeOrderModalOpen, setChangeOrderModalOpen] = useState(false);
   const [isOutreachModalOpen, setIsOutreachModalOpen] = useState(false);
-  const [isVoiceMemoModalOpen, setIsVoiceMemoModalOpen] = useState(false);
   const [financeModalType, setFinanceModalType] = useState<FinancialTransactionType>(FinancialTransactionType.Expense);
   const [transactionToEdit, setTransactionToEdit] = useState<FinancialTransaction | null>(null);
   const [isEnriching, setIsEnriching] = useState(false);
@@ -152,17 +150,6 @@ const DossierPage: React.FC<DossierPageProps> = () => {
     addActivityLog(note);
   };
   
-  const handleAddMultipleActivities = (notes: string[]) => {
-      if (!notes || notes.length === 0) return;
-      const newActivities: ActivityLogItem[] = notes.map(note => ({
-          id: uuidv4(),
-          timestamp: new Date().toISOString(),
-          note,
-      }));
-      updateLead({ ...currentLead, activityLog: [...newActivities, ...currentLead.activityLog] });
-  };
-
-
   const handleDeleteActivity = (activityId: string) => {
     const updatedLog = currentLead.activityLog.filter(act => act.id !== activityId);
     updateLead({ ...currentLead, activityLog: updatedLog });
@@ -495,7 +482,7 @@ const DossierPage: React.FC<DossierPageProps> = () => {
           <ProjectFinances transactions={currentLead.finances || []} onAddTransaction={handleOpenFinanceModal} onEditTransaction={handleOpenEditFinanceModal} onDeleteTransaction={handleDeleteTransaction} isArchived={currentLead.isArchived} formatCurrency={formatCurrency} />
           <ProjectScheduleComponent lead={currentLead} onEditClick={() => setScheduleModalOpen(true)} onUpdatePhaseStatus={handlePhaseStatusUpdate} />
           <ChangeOrders lead={currentLead} onCreateClick={() => setChangeOrderModalOpen(true)} onDelete={handleDeleteChangeOrder} formatCurrency={formatCurrency} />
-          <ActivityLog activities={currentLead.activityLog} onAddActivity={handleAddActivity} onDeleteActivity={handleDeleteActivity} isArchived={currentLead.isArchived} onAddToCalendarClick={() => setCalendarModalOpen(true)} onAddVoiceMemoClick={() => setIsVoiceMemoModalOpen(true)} />
+          <ActivityLog activities={currentLead.activityLog} onAddActivity={handleAddActivity} onDeleteActivity={handleDeleteActivity} isArchived={currentLead.isArchived} onAddToCalendarClick={() => setCalendarModalOpen(true)} />
 
           {currentLead.groundingChunks && currentLead.groundingChunks.length > 0 && (
             <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-slate-200">
@@ -523,7 +510,6 @@ const DossierPage: React.FC<DossierPageProps> = () => {
       <FinancialTransactionModal isOpen={isFinanceModalOpen} onClose={() => { setFinanceModalOpen(false); setTransactionToEdit(null); }} onSave={handleSaveTransaction} transactionType={financeModalType} transactionToEdit={transactionToEdit} />
       <ChangeOrderModal isOpen={isChangeOrderModalOpen} onClose={() => setChangeOrderModalOpen(false)} onSave={handleSaveChangeOrder} />
       <OutreachGeneratorModal isOpen={isOutreachModalOpen} onClose={() => setIsOutreachModalOpen(false)} lead={currentLead} />
-      <VoiceMemoModal isOpen={isVoiceMemoModalOpen} onClose={() => setIsVoiceMemoModalOpen(false)} onSave={handleAddMultipleActivities} />
     </div>
   );
 };

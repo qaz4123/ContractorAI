@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, GroundingChunk, Content } from "@google/genai";
 import { Dossier, QuoteLineItem, ProjectSuggestion, ChangeOrder } from "../types";
 import { v4 as uuidv4 } from 'uuid';
@@ -132,18 +133,18 @@ const projectPhasesSchema = {
     }
 };
 
+// FIX: Added schema for voice memo analysis.
 const voiceMemoAnalysisSchema = {
     type: Type.OBJECT,
     properties: {
-        transcription: { type: Type.STRING, description: "The full, accurate transcription of the audio memo." },
-        summary: { type: Type.STRING, description: "A concise, one or two-paragraph summary of the key points from the memo." },
+        summary: { type: Type.STRING, description: "A concise summary of the voice memo's content." },
         actionItems: {
             type: Type.ARRAY,
             items: { type: Type.STRING },
-            description: "A list of clear, actionable tasks or follow-up items mentioned in the memo. e.g., ['Send quote for the kitchen remodel', 'Confirm paint color with client by Friday']"
-        },
+            description: "A list of clear, actionable tasks or follow-up items mentioned in the memo."
+        }
     },
-    required: ["transcription", "summary", "actionItems"]
+    required: ["summary", "actionItems"]
 };
 
 export const summarizeDossierForContractor = async (dossier: Dossier): Promise<string> => {
@@ -227,41 +228,6 @@ export const generateOutreachMessage = async (dossier: Dossier, type: 'email' | 
     } catch (error) {
         console.error("Error generating outreach message:", error);
         return "Sorry, I was unable to generate a message at this time. Please try again.";
-    }
-};
-
-export const analyzeVoiceMemo = async (audioBase64: string): Promise<{ transcription: string; summary: string; actionItems: string[] }> => {
-    try {
-        const audioPart = {
-            inlineData: {
-                mimeType: 'audio/webm', // The MediaRecorder in the component creates a webm blob
-                data: audioBase64,
-            },
-        };
-
-        const textPart = {
-            text: "Please transcribe the following audio memo from a contractor. After transcribing, provide a concise summary of the key points and extract a list of actionable follow-up items."
-        };
-
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: { parts: [textPart, audioPart] },
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: voiceMemoAnalysisSchema,
-                systemInstruction: "You are an AI assistant for a construction contractor. Your task is to process voice memos. Respond ONLY with the JSON object defined in the schema."
-            }
-        });
-
-        const jsonText = response.text;
-        if (!jsonText) {
-            throw new Error("AI response was empty, expected JSON.");
-        }
-        return JSON.parse(jsonText.trim());
-
-    } catch (error) {
-        console.error("Error analyzing voice memo:", error);
-        throw new Error("Failed to analyze voice memo with AI. Please try again.");
     }
 };
 
@@ -644,5 +610,41 @@ export const generateChangeOrderDetails = async (description: string): Promise<O
     } catch (error) {
         console.error("Error generating change order details:", error);
         throw new Error("Failed to generate change order details with AI. Please try adding them manually.");
+    }
+};
+
+// FIX: Added function to analyze voice memos.
+export const analyzeVoiceMemo = async (audioBase64: string): Promise<{ summary: string; actionItems: string[] }> => {
+    try {
+        const audioPart = {
+            inlineData: {
+                mimeType: 'audio/webm',
+                data: audioBase64,
+            },
+        };
+        const textPart = {
+            text: "You are an AI assistant for a busy contractor. Transcribe and summarize the following voice memo, which was recorded after a client meeting. Extract a concise summary and a list of specific, actionable follow-up tasks. Focus on key decisions, measurements, and next steps."
+        };
+        
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: { parts: [textPart, audioPart] },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: voiceMemoAnalysisSchema,
+                systemInstruction: "Respond ONLY with the JSON object defined in the schema. Do not include any other text or markdown."
+            }
+        });
+        
+        const jsonText = response.text;
+        if (!jsonText) {
+            throw new Error("AI response was empty, expected voice memo analysis JSON.");
+        }
+        const result = JSON.parse(jsonText.trim());
+        return result;
+
+    } catch (error) {
+        console.error("Error analyzing voice memo:", error);
+        throw new Error("Failed to analyze the voice memo with AI. The audio may be unclear or too short. Please try again.");
     }
 };

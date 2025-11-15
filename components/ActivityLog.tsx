@@ -8,10 +8,9 @@ interface ActivityLogProps {
     onDeleteActivity: (id: string) => void;
     isArchived: boolean;
     onAddToCalendarClick: () => void;
-    onAddVoiceMemoClick: () => void;
 }
 
-const ActivityLog: React.FC<ActivityLogProps> = ({ activities, onAddActivity, onDeleteActivity, isArchived, onAddToCalendarClick, onAddVoiceMemoClick }) => {
+const ActivityLog: React.FC<ActivityLogProps> = ({ activities, onAddActivity, onDeleteActivity, isArchived, onAddToCalendarClick }) => {
     const [newNote, setNewNote] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -47,15 +46,6 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, onAddActivity, on
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" /></svg>
                         Add to Calendar
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onAddVoiceMemoClick}
-                        disabled={isArchived}
-                        className="w-full sm:w-auto flex-grow bg-white text-slate-700 border border-slate-300 py-2 px-4 rounded-md font-semibold text-sm hover:bg-slate-50 disabled:bg-slate-100 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" /><path d="M5.5 5.5A.5.5 0 016 5v4a4 4 0 008 0V5a.5.5 0 011 0v4a5 5 0 01-10 0V5A.5.5 0 015.5 5.5z" /><path d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" /></svg>
-                        Add Voice Memo
                     </button>
                     <button
                         onClick={handleSubmit}
