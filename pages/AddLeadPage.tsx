@@ -31,6 +31,7 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
     const user = userProfile;
     
     const [address, setAddress] = useState('');
+    const [isAddressValid, setIsAddressValid] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isGeolocating, setIsGeolocating] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState(LOADING_MESSAGES[0]);
@@ -49,6 +50,9 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
                 const place = autocomplete.getPlace();
                 if (place && place.formatted_address) {
                     setAddress(place.formatted_address);
+                    setIsAddressValid(true);
+                } else {
+                    setIsAddressValid(false);
                 }
             });
         }
@@ -86,8 +90,10 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
                     const { latitude, longitude } = position.coords;
                     const foundAddress = await getAddressFromCoords(latitude, longitude);
                     setAddress(foundAddress);
+                    setIsAddressValid(true); // Address from geolocation is considered valid
                 } catch (err) {
                      setError(err instanceof Error ? err.message : "Could not determine address from location.");
+                     setIsAddressValid(false);
                 } finally {
                     setIsGeolocating(false);
                 }
@@ -109,6 +115,10 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
         e.preventDefault();
         if (!address.trim()) {
             setError("Address cannot be empty.");
+            return;
+        }
+        if (!isAddressValid) {
+            setError("Please select a valid address from the suggestions list.");
             return;
         }
         setIsLoading(true);
@@ -206,7 +216,10 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
                                     type="text"
                                     id="address"
                                     value={address}
-                                    onChange={(e) => setAddress(e.target.value)}
+                                    onChange={(e) => {
+                                        setAddress(e.target.value);
+                                        setIsAddressValid(false);
+                                    }}
                                     placeholder="e.g., 123 Main St, Anytown, USA"
                                     className="w-full px-4 py-3 bg-slate-800 text-white border border-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-400 text-sm"
                                     disabled={isLoading || isGeolocating}

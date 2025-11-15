@@ -355,7 +355,7 @@ const DossierPage: React.FC<DossierPageProps> = () => {
       }
       setIsRefreshing(true);
       try {
-          const { dossier: newDossier, groundingChunks: newChunks } = await generateDossier(currentLead.address, user.industry);
+          const { dossier: newDossier, groundingChunks: newChunks } = await generateDossier(currentLead.address, user.industry, currentLead.coords);
           setCachedDossier(currentLead.address, newDossier);
           
           const newEquity = calculateEquity(newDossier);
