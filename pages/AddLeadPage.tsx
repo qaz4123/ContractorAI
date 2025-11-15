@@ -1,17 +1,39 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { generateDossier, getAddressFromCoords, getCoordsFromAddress } from '../services/geminiService';
+import { generateDossier, getAddressFromCoords } from '../services/geminiService';
 import { Dossier, Lead, Status, FinancingStatus, LeadSource, GroundingChunk } from '../types';
 import Header from '../components/Header';
 import { getCachedDossier, setCachedDossier } from '../services/dossierCache';
 import { calculateEquity, calculateLeadScore } from '../services/leadUtils';
 import { useAuth } from '../contexts/AuthContext';
 import { useLeads } from '../contexts/LeadsContext';
+import AddressSelectionModal from '../components/AddressSelectionModal';
 
 // Declare google for global Google Maps API
 declare const google: any;
+
+// FIX: Define minimal interfaces for Google Maps types to resolve namespace errors.
+interface PlaceResult {
+    geometry: {
+        location: {
+            lat: () => number;
+            lng: () => number;
+        };
+    };
+    formatted_address?: string;
+}
+
+interface GeocoderResult {
+    geometry: {
+        location: {
+            lat: () => number;
+            lng: () => number;
+        };
+    };
+    formatted_address: string;
+    place_id: string;
+}
 
 interface AddLeadPageProps {}
 
@@ -31,32 +53,34 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
     const user = userProfile;
     
     const [address, setAddress] = useState('');
-    const [isAddressValid, setIsAddressValid] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isGeolocating, setIsGeolocating] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState(LOADING_MESSAGES[0]);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     const addressInputRef = useRef<HTMLInputElement>(null);
+    
+    const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
+    const [addressOptions, setAddressOptions] = useState<GeocoderResult[]>([]);
+    const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
 
     useEffect(() => {
-        // Initialize Google Maps Autocomplete
         if (typeof google !== 'undefined' && typeof google.maps !== 'undefined' && addressInputRef.current) {
             const autocomplete = new google.maps.places.Autocomplete(addressInputRef.current, {
                 types: ['address'],
-                componentRestrictions: { country: 'us' } // Restrict to US addresses
+                componentRestrictions: { country: 'us' }
             });
             autocomplete.addListener('place_changed', () => {
                 const place = autocomplete.getPlace();
-                if (place && place.formatted_address) {
+                if (place && place.geometry && place.formatted_address) {
                     setAddress(place.formatted_address);
-                    setIsAddressValid(true);
+                    setSelectedPlace(place);
                 } else {
-                    setIsAddressValid(false);
+                    setSelectedPlace(null);
                 }
             });
         }
-    }, []); // Run only once on mount
+    }, []);
 
     useEffect(() => {
         let interval: number | undefined;
@@ -69,105 +93,71 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
             }, 2500);
         }
         return () => {
-            if (interval) {
-                clearInterval(interval);
-            }
+            if (interval) clearInterval(interval);
         };
     }, [isLoading]);
 
-    const handleUseMyLocation = async () => {
+    const handleUseMyLocation = () => {
         if (!navigator.geolocation) {
             setError("Geolocation is not supported by your browser.");
             return;
         }
-
         setIsGeolocating(true);
         setError(null);
-
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 try {
                     const { latitude, longitude } = position.coords;
                     const foundAddress = await getAddressFromCoords(latitude, longitude);
                     setAddress(foundAddress);
-                    setIsAddressValid(true); // Address from geolocation is considered valid
+                    setSelectedPlace(null); // We geocoded, so there's no 'place' object
                 } catch (err) {
                      setError(err instanceof Error ? err.message : "Could not determine address from location.");
-                     setIsAddressValid(false);
                 } finally {
                     setIsGeolocating(false);
                 }
             },
             (err) => {
                 let message = "An unknown error occurred.";
-                if (err.code === err.PERMISSION_DENIED) {
-                    message = "Geolocation permission denied. Please enable it in your browser settings.";
-                } else if (err.code === err.POSITION_UNAVAILABLE) {
-                    message = "Location information is unavailable.";
-                }
+                if (err.code === err.PERMISSION_DENIED) message = "Geolocation permission denied.";
+                else if (err.code === err.POSITION_UNAVAILABLE) message = "Location information is unavailable.";
                 setError(message);
                 setIsGeolocating(false);
             }
         );
     };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!address.trim()) {
-            setError("Address cannot be empty.");
-            return;
-        }
-        if (!isAddressValid) {
-            setError("Please select a valid address from the suggestions list.");
-            return;
-        }
-        setIsLoading(true);
-        setError(null);
-
+    
+    const proceedWithDossierGeneration = async (finalAddress: string, coords: { lat: number; lng: number }) => {
         try {
-            const coords = await getCoordsFromAddress(address);
             let dossier: Dossier;
             let groundingChunks: GroundingChunk[] | undefined;
             let activityNote: string;
 
-            const cachedDossier = getCachedDossier(address);
+            const cachedDossier = getCachedDossier(finalAddress);
 
             if (cachedDossier) {
                 setLoadingMessage('Loading from cache...');
                 dossier = cachedDossier;
-                groundingChunks = []; // Grounding chunks are not cached
+                groundingChunks = [];
                 activityNote = 'Loaded dossier from cache.';
-                 // Short delay to show the message
                 await new Promise(resolve => setTimeout(resolve, 1000));
             } else {
-                const { dossier: newDossier, groundingChunks: newGroundingChunks } = await generateDossier(address, user?.industry, coords);
+                const { dossier: newDossier, groundingChunks: newGroundingChunks } = await generateDossier(finalAddress, user?.industry, coords);
                 dossier = newDossier;
                 groundingChunks = newGroundingChunks;
-                setCachedDossier(address, dossier); // Save to cache
+                setCachedDossier(finalAddress, dossier);
                 activityNote = 'Generated dossier using AI Lookup with real-time data.';
             }
 
             const estimatedEquity = calculateEquity(dossier);
-            // If AI didn't provide a balance, set our calculated one based on equity
             if (!dossier.mortgageDetails.estimatedRemainingBalance) {
                 dossier.mortgageDetails.estimatedRemainingBalance = Math.round(dossier.estimatedValue - estimatedEquity);
             }
-
             const { score: leadScore, value: leadScoreValue, uncertainty: leadScoreUncertainty } = calculateLeadScore(dossier, estimatedEquity);
 
             const newLead: Omit<Lead, 'id'> = {
-                address,
-                dossier: {
-                    ...dossier,
-                    propertyDetails: {
-                        ...dossier.propertyDetails,
-                        propertyType: dossier.propertyDetails.propertyType || undefined,
-                        roofingMaterial: dossier.propertyDetails.roofingMaterial || undefined,
-                        exteriorFinish: dossier.propertyDetails.exteriorFinish || undefined,
-                        heatingSystem: dossier.propertyDetails.heatingSystem || undefined,
-                        coolingSystem: dossier.propertyDetails.coolingSystem || undefined,
-                    },
-                },
+                address: finalAddress,
+                dossier,
                 estimatedEquity,
                 leadScore,
                 leadScoreValue,
@@ -187,7 +177,6 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
             };
 
             addLead(newLead);
-            // Navigate immediately, onSnapshot will update the list and get the new lead
             navigate(`/dashboard`, { replace: true });
 
         } catch (err) {
@@ -195,6 +184,48 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
         } finally {
             setIsLoading(false);
         }
+    };
+    
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!address.trim()) {
+            setError("Address cannot be empty.");
+            return;
+        }
+        setIsLoading(true);
+        setError(null);
+
+        if (selectedPlace && selectedPlace.geometry) {
+            const coords = { lat: selectedPlace.geometry.location.lat(), lng: selectedPlace.geometry.location.lng() };
+            await proceedWithDossierGeneration(selectedPlace.formatted_address || address, coords);
+            return;
+        }
+
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address: address, componentRestrictions: { country: 'us' } }, (results: GeocoderResult[] | null, status: string) => {
+            if (status === 'OK' && results) {
+                if (results.length === 1) {
+                    const result = results[0];
+                    const coords = { lat: result.geometry.location.lat(), lng: result.geometry.location.lng() };
+                    proceedWithDossierGeneration(result.formatted_address, coords);
+                } else {
+                    setAddressOptions(results);
+                    setIsSelectionModalOpen(true);
+                    setIsLoading(false);
+                }
+            } else {
+                setError("Could not find a valid location for the address. Please try being more specific.");
+                setIsLoading(false);
+            }
+        });
+    };
+    
+    const handleAddressSelection = (selection: GeocoderResult) => {
+        setIsSelectionModalOpen(false);
+        setIsLoading(true);
+        const coords = { lat: selection.geometry.location.lat(), lng: selection.geometry.location.lng() };
+        setAddress(selection.formatted_address);
+        proceedWithDossierGeneration(selection.formatted_address, coords);
     };
 
     return (
@@ -218,7 +249,7 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
                                     value={address}
                                     onChange={(e) => {
                                         setAddress(e.target.value);
-                                        setIsAddressValid(false);
+                                        setSelectedPlace(null);
                                     }}
                                     placeholder="e.g., 123 Main St, Anytown, USA"
                                     className="w-full px-4 py-3 bg-slate-800 text-white border border-slate-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-slate-400 text-sm"
@@ -262,6 +293,12 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
                     </form>
                 </div>
             </main>
+            <AddressSelectionModal
+                isOpen={isSelectionModalOpen}
+                onClose={() => setIsSelectionModalOpen(false)}
+                options={addressOptions}
+                onSelect={handleAddressSelection}
+            />
         </div>
     );
 };

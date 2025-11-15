@@ -1,25 +1,35 @@
 
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// =================================================================================
+// IMPORTANT: ACTION REQUIRED FOR FIREBASE DEPLOYMENT
+// =================================================================================
+// To connect your app to Firebase, you must replace the placeholder values
+// below with your actual Firebase project's configuration.
+//
+// You can find this configuration in your Firebase project console:
+// 1. Go to your Firebase project: https://console.firebase.google.com/
+// 2. Click on the gear icon (Project settings) in the top-left corner.
+// 3. Under the "General" tab, scroll down to "Your apps".
+// 4. If you haven't created a web app yet, do so now.
+// 5. In your web app's card, find the "SDK setup and configuration" section.
+// 6. Select "Config" and copy the `firebaseConfig` object.
+// 7. Paste it here to replace the placeholder object below.
+//
+// NOTE: Until you do this, real user sign-up, login, and data storage will not work.
+// The "Demo Mode" has been configured to work without this for now.
+// =================================================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyAxkwZc_PSlttjFzBBv5-zgahdmn6pYV0s",
-  authDomain: "gen-lang-client-0137146499.firebaseapp.com",
-  projectId: "gen-lang-client-0137146499",
-  storageBucket: "gen-lang-client-0137146499.firebasestorage.app",
-  messagingSenderId: "242839861145",
-  appId: "1:242839861145:web:88286a69c0efeff4400508",
-  measurementId: "G-FD3VKQLSJX"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
