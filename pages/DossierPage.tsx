@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
@@ -341,7 +340,20 @@ const DossierPage: React.FC<DossierPageProps> = () => {
           const note = `Dossier enriched with ${type} data.`;
           const newActivity = { id: uuidv4(), timestamp: new Date().toISOString(), note };
           
-          updateLead({ ...currentLead, dossier: enrichedDossier, groundingChunks: uniqueChunks, activityLog: [newActivity, ...currentLead.activityLog] });
+          // Recalculate score after enrichment
+          const newEquity = calculateEquity(enrichedDossier);
+          const { score: newScore, value: newScoreValue, uncertainty: newUncertainty } = calculateLeadScore(enrichedDossier, newEquity);
+
+          updateLead({ 
+              ...currentLead, 
+              dossier: enrichedDossier, 
+              groundingChunks: uniqueChunks, 
+              activityLog: [newActivity, ...currentLead.activityLog],
+              estimatedEquity: newEquity,
+              leadScore: newScore,
+              leadScoreValue: newScoreValue,
+              leadScoreUncertainty: newUncertainty,
+          });
       } catch (error) {
           alert(`Failed to enrich dossier with ${type} data. Please try again.`);
       } finally {

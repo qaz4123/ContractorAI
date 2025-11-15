@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import DossierPage from './pages/DossierPage';
 import AddLeadPage from './pages/AddLeadPage';
 import AddLeadManuallyPage from './pages/AddLeadManuallyPage';
+import BulkAddLeadsPage from './pages/BulkAddLeadsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import LandingPage from './pages/LandingPage';
@@ -56,6 +57,7 @@ function App() {
                   <Route path="/dossier/:id" element={<DossierPage />} />
                   <Route path="/add-lead" element={<AddLeadPage />} />
                   <Route path="/add-lead-manually" element={<AddLeadManuallyPage />} />
+                  <Route path="/bulk-add-leads" element={<BulkAddLeadsPage />} />
                   <Route path="*" element={<Navigate to="/dashboard" />} />
                 </>
               ) : (

@@ -18,6 +18,9 @@ const parseRange = (rangeStr: string): { min: number; max: number } => {
     };
 };
 
+const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+
+
 export const calculateEquity = (dossier: Dossier): number => {
     // Use AI estimated balance if available, otherwise try to calculate it, finally fallback to simple subtraction
     if (dossier.mortgageDetails?.estimatedRemainingBalance) {
@@ -45,97 +48,108 @@ export const calculateEquity = (dossier: Dossier): number => {
 
 // Centralized scoring logic with breakdown for consistency
 export const calculateLeadScore = (dossier: Dossier, estimatedEquity: number): { score: LeadScore; value: number; breakdown: { label: string; value: string; points: number }[], uncertainty: number } => {
-    let scoreValue = 0;
+    let score = 0;
     let uncertainty = 0;
-    const currentYear = new Date().getFullYear();
     const breakdown: { label: string; value: string; points: number }[] = [];
+    const currentYear = new Date().getFullYear();
 
-    const addScore = (points: number, label: string, value: string, potentialPointsIfMissing = 0) => {
-        if (value === 'N/A' || !value || value === '$0' || (typeof value === 'number' && value === 0)) {
-            uncertainty += potentialPointsIfMissing;
+    const addBreakdown = (label: string, valueDisplay: string, points: number, isMissing: boolean = false, potentialPoints: number = 0) => {
+        if (isMissing || valueDisplay === 'N/A' || valueDisplay === '$0') {
+            uncertainty += potentialPoints;
         } else {
-            scoreValue += points;
-            breakdown.push({ label, value, points });
+            score += points;
+            breakdown.push({ label, value: valueDisplay, points });
         }
     };
 
-    // Section 1: Financial Health
+    // 1. Financial Health (Max ~45 pts)
     let equityPoints = 0;
     if (estimatedEquity > 200000) equityPoints = 25;
     else if (estimatedEquity > 100000) equityPoints = 15;
     else if (estimatedEquity > 50000) equityPoints = 5;
-    addScore(equityPoints, 'Estimated Equity', new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(estimatedEquity), 15);
+    else if (estimatedEquity < 20000) equityPoints = -5;
+    addBreakdown('Financial: Home Equity', formatCurrency(estimatedEquity), equityPoints, false, 20); // Equity is fundamental, never "missing"
 
     const income = parseRange(dossier.demographics.estHouseholdIncome);
     let incomePoints = 0;
     if (income.min >= 150000) incomePoints = 15;
     else if (income.min >= 100000) incomePoints = 10;
     else if (income.min >= 75000) incomePoints = 5;
-    addScore(incomePoints, 'Est. Household Income', dossier.demographics.estHouseholdIncome, 10);
+    addBreakdown('Financial: Est. Income', dossier.demographics.estHouseholdIncome || 'N/A', incomePoints, !income.min, 10);
+
+    const ltv = dossier.mortgageDetails?.estimatedRemainingBalance && dossier.estimatedValue > 0
+        ? dossier.mortgageDetails.estimatedRemainingBalance / dossier.estimatedValue
+        : null;
+    let ltvPoints = 0;
+    if (ltv !== null) {
+        if (ltv < 0.5) ltvPoints = 10;
+        else if (ltv < 0.75) ltvPoints = 5;
+        else if (ltv > 0.9) ltvPoints = -10;
+        addBreakdown('Financial: Loan-to-Value (LTV)', `${(ltv * 100).toFixed(0)}%`, ltvPoints);
+    } else {
+        addBreakdown('Financial: Loan-to-Value (LTV)', 'N/A', 0, true, 5);
+    }
     
-    // Section 2: Project Potential
-    const { yearBuilt, yearRenovated, propertyType } = dossier.propertyDetails;
-    let propertyAgePoints = 0;
+    // 2. Renovation Potential (Max ~40 pts)
+    const { yearBuilt, yearRenovated, lastSalePrice, sqFootage } = dossier.propertyDetails;
+    let agePoints = 0;
+    let ageDisplay = 'N/A';
     if (yearBuilt > 0) {
-        const propertyAge = currentYear - yearBuilt;
-        if (propertyAge > 40) propertyAgePoints = 15;
-        else if (propertyAge > 20) propertyAgePoints = 10;
-        else if (propertyAge > 10) propertyAgePoints = 5;
+        const age = currentYear - yearBuilt;
+        if (age > 40) agePoints = 20;
+        else if (age > 20) agePoints = 15;
+        else if (age > 10) agePoints = 5;
+        
+        ageDisplay = `${age} years old`;
 
-        if (yearRenovated && currentYear - yearRenovated <= 5) {
-            propertyAgePoints = Math.max(0, propertyAgePoints - 15);
+        if (yearRenovated && (currentYear - yearRenovated <= 7)) {
+            agePoints = Math.max(0, agePoints - 15); // Heavily discount if recently renovated
+            ageDisplay += `, renovated ${yearRenovated}`;
         }
-        addScore(propertyAgePoints, 'Property Age & Condition', `${currentYear - yearBuilt} years old` + (yearRenovated ? `, renovated in ${yearRenovated}` : ''));
-    } else {
-        uncertainty += 10;
     }
+    addBreakdown('Potential: Property Age', ageDisplay, agePoints, !yearBuilt, 15);
     
-    let projectPotentialPoints = 0;
+    let appreciationPoints = 0;
+    let appreciationDisplay = 'N/A';
+    if (lastSalePrice > 0 && dossier.estimatedValue > lastSalePrice) {
+        const appreciation = (dossier.estimatedValue - lastSalePrice) / lastSalePrice;
+        if (appreciation > 0.75) appreciationPoints = 10;
+        else if (appreciation > 0.30) appreciationPoints = 5;
+        appreciationDisplay = `+${(appreciation * 100).toFixed(0)}% since last sale`;
+    }
+    addBreakdown('Potential: Home Appreciation', appreciationDisplay, appreciationPoints, !lastSalePrice, 5);
+
+    let sizePoints = 0;
+    if (sqFootage > 3000) sizePoints = 5;
+    else if (sqFootage > 2000) sizePoints = 3;
+    addBreakdown('Potential: Property Size', sqFootage ? `${sqFootage} sqft` : 'N/A', sizePoints, !sqFootage, 3);
+    
+    let projectSuggestionPoints = 0;
     if (dossier.projectSuggestions && dossier.projectSuggestions.length > 0) {
-        dossier.projectSuggestions.forEach(suggestion => {
-            const name = suggestion.name.toLowerCase();
-            if (name.includes('kitchen') || name.includes('addition') || name.includes('master bath') || name.includes('roof')) projectPotentialPoints += 5;
-            if (suggestion.estimatedCost > 40000) projectPotentialPoints += 5;
-            if (suggestion.estimatedROI > 80) projectPotentialPoints += 3;
-        });
-        projectPotentialPoints = Math.min(20, projectPotentialPoints); // Cap at 20
+        const highValueCount = dossier.projectSuggestions.filter(s => s.estimatedCost > 30000 || s.estimatedROI > 80).length;
+        projectSuggestionPoints = Math.min(10, highValueCount * 5);
     }
-    addScore(projectPotentialPoints, 'AI Project Suggestions', `${dossier.projectSuggestions?.length || 0} suggestions`, 5);
+    addBreakdown('Potential: AI Project Ideas', `${dossier.projectSuggestions?.length || 0} suggestions`, projectSuggestionPoints, false, 5);
 
-    let propertyTypePoints = 0;
-    if (propertyType?.toLowerCase() === 'single-family') propertyTypePoints = 5;
-    else if (propertyType?.toLowerCase() === 'townhouse') propertyTypePoints = 2;
-    addScore(propertyTypePoints, 'Property Type', propertyType || 'N/A', 2);
-
-    let neighborhoodPoints = 0;
-    const neighborhoodVibe = dossier.neighborhoodInfo?.vibe?.toLowerCase();
-    if (neighborhoodVibe && (neighborhoodVibe.includes('affluent') || neighborhoodVibe.includes('up-and-coming'))) {
-        neighborhoodPoints = 5;
-    }
-    addScore(neighborhoodPoints, 'Neighborhood Vibe', dossier.neighborhoodInfo?.vibe || 'N/A', 5);
-
-    // Section 3: Owner Profile & Risk Factors
-    const age = parseRange(dossier.demographics.estOwnerAgeRange);
+    // 3. Owner Profile (Max 10 pts)
+    const ownerAge = parseRange(dossier.demographics.estOwnerAgeRange);
     let ownerAgePoints = 0;
-    if (age.min >= 40 && age.max <= 65) ownerAgePoints = 10;
-    else if (age.min >= 30 && age.max < 40) ownerAgePoints = 5;
-    addScore(ownerAgePoints, 'Owner Age Range', dossier.demographics.estOwnerAgeRange, 5);
-    
-    let lienPoints = 0;
+    if (ownerAge.min >= 40 && ownerAge.max <= 65) ownerAgePoints = 10; // Prime spending years
+    else if (ownerAge.min >= 30 && ownerAge.max < 70) ownerAgePoints = 5;
+    addBreakdown('Profile: Owner Age', dossier.demographics.estOwnerAgeRange || 'N/A', ownerAgePoints, !ownerAge.min, 5);
+
+    // 4. Risk Factors
     if (dossier.taxLiens) {
-      lienPoints = -50;
-      addScore(lienPoints, 'Tax Liens', 'Active Liens Found');
-    } else {
-      addScore(0, 'Tax Liens', 'No Liens Found');
+        addBreakdown('Risk: Tax Liens', 'Active lien found', -50);
     }
     
     // Final score normalization
-    scoreValue = Math.max(0, Math.min(100, scoreValue));
+    const scoreValue = Math.max(0, Math.min(100, Math.round(score)));
 
     let leadScore: LeadScore;
-    if (scoreValue >= 80) leadScore = LeadScore.A;
-    else if (scoreValue >= 50) leadScore = LeadScore.B;
+    if (scoreValue >= 75) leadScore = LeadScore.A;
+    else if (scoreValue >= 45) leadScore = LeadScore.B;
     else leadScore = LeadScore.C;
 
-    return { score: leadScore, value: Math.round(scoreValue), breakdown, uncertainty };
+    return { score: leadScore, value: scoreValue, breakdown, uncertainty };
 };

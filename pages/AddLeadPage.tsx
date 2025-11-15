@@ -24,6 +24,12 @@ interface PlaceResult {
     formatted_address?: string;
 }
 
+interface GeocoderAddressComponent {
+    long_name: string;
+    short_name: string;
+    types: string[];
+}
+
 interface GeocoderResult {
     geometry: {
         location: {
@@ -31,6 +37,7 @@ interface GeocoderResult {
             lng: () => number;
         };
     };
+    address_components?: GeocoderAddressComponent[];
     formatted_address: string;
     place_id: string;
 }
@@ -204,12 +211,22 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
         const geocoder = new google.maps.Geocoder();
         geocoder.geocode({ address: address, componentRestrictions: { country: 'us' } }, (results: GeocoderResult[] | null, status: string) => {
             if (status === 'OK' && results) {
-                if (results.length === 1) {
-                    const result = results[0];
+                const validResults = results.filter(result =>
+                    result.address_components?.some(comp => comp.types.includes('street_number'))
+                );
+
+                if (validResults.length === 0) {
+                    setError("Please enter a specific residential address including a house number.");
+                    setIsLoading(false);
+                    return;
+                }
+
+                if (validResults.length === 1) {
+                    const result = validResults[0];
                     const coords = { lat: result.geometry.location.lat(), lng: result.geometry.location.lng() };
                     proceedWithDossierGeneration(result.formatted_address, coords);
                 } else {
-                    setAddressOptions(results);
+                    setAddressOptions(validResults);
                     setIsSelectionModalOpen(true);
                     setIsLoading(false);
                 }

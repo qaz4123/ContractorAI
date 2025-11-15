@@ -3,6 +3,12 @@ import React from 'react';
 // Make sure google types are available. They should be from @types/google.maps
 declare const google: any;
 
+interface GeocoderAddressComponent {
+    long_name: string;
+    short_name: string;
+    types: string[];
+}
+
 // FIX: Define minimal interface for Google Maps GeocoderResult to resolve namespace error.
 interface GeocoderResult {
     geometry: {
@@ -11,6 +17,7 @@ interface GeocoderResult {
             lng: () => number;
         };
     };
+    address_components?: GeocoderAddressComponent[];
     formatted_address: string;
     place_id: string;
 }
