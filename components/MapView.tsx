@@ -16,26 +16,34 @@ const MapView: React.FC<MapViewProps> = ({ leads, onMapClick }) => {
     const mapInstance = useRef<any | null>(null);
     const markers = useRef<any[]>([]);
     const [isMapApiLoaded, setIsMapApiLoaded] = useState(false);
+    const [apiKeyError, setApiKeyError] = useState(false);
 
     // Effect to check when Google Maps API is loaded
     useEffect(() => {
-        const checkApi = () => {
+        // If API is already there, we're good
+        if (typeof google !== 'undefined' && google.maps) {
+            setIsMapApiLoaded(true);
+            return;
+        }
+
+        const intervalId = window.setInterval(() => {
             if (typeof google !== 'undefined' && google.maps) {
                 setIsMapApiLoaded(true);
-                return true;
-            }
-            return false;
-        };
-        
-        if (checkApi()) return;
-
-        const intervalId = setInterval(() => {
-            if (checkApi()) {
                 clearInterval(intervalId);
             }
-        }, 100);
+        }, 200);
 
-        return () => clearInterval(intervalId);
+        const timeoutId = window.setTimeout(() => {
+            if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                setApiKeyError(true);
+                clearInterval(intervalId);
+            }
+        }, 5000); // 5-second timeout
+
+        return () => {
+            clearInterval(intervalId);
+            clearTimeout(timeoutId);
+        };
     }, []);
     
     // Effect to initialize the map and update markers
@@ -101,7 +109,22 @@ const MapView: React.FC<MapViewProps> = ({ leads, onMapClick }) => {
               mapInstance.current.setZoom(14);
             }
         }
-    }, [leads, isMapApiLoaded, onMapClick]);
+    }, [leads, isMapApiLoaded, onMapClick, navigate]);
+
+    if (apiKeyError) {
+        return (
+            <div className="relative h-96 bg-red-50 border-2 border-dashed border-red-200 rounded-lg flex flex-col items-center justify-center p-4 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-400 mb-3" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <h3 className="text-lg font-bold text-red-700">Google Maps Error</h3>
+                <p className="text-red-600 mt-2 text-sm">The map could not be loaded, which is required for this view. This is likely due to an invalid or missing Google Maps API key.</p>
+                <p className="text-xs text-slate-500 mt-4">
+                    <strong>Action Required:</strong> Please replace <code className="bg-slate-200 p-1 rounded">'YOUR_GOOGLE_MAPS_API_KEY'</code> in the <code className="bg-slate-200 p-1 rounded">index.html</code> file with a valid API key.
+                </p>
+            </div>
+        );
+    }
 
     if (!isMapApiLoaded) {
         return (

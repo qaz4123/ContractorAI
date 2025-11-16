@@ -37,10 +37,39 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     const addressInputRef = useRef<HTMLInputElement>(null);
+    const [isMapApiLoaded, setIsMapApiLoaded] = useState(false);
+    const [apiKeyError, setApiKeyError] = useState(false);
 
     useEffect(() => {
-        // Initialize Google Maps Autocomplete
-        if (typeof google !== 'undefined' && typeof google.maps !== 'undefined' && addressInputRef.current) {
+        // If API is already there, we're good
+        if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+            setIsMapApiLoaded(true);
+            return;
+        }
+
+        const intervalId = window.setInterval(() => {
+            if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                setIsMapApiLoaded(true);
+                clearInterval(intervalId);
+            }
+        }, 200);
+
+        const timeoutId = window.setTimeout(() => {
+            if (typeof google === 'undefined' || typeof google.maps === 'undefined' || typeof google.maps.places === 'undefined') {
+                setApiKeyError(true);
+                clearInterval(intervalId);
+            }
+        }, 5000);
+
+        return () => {
+            clearInterval(intervalId);
+            clearTimeout(timeoutId);
+        };
+    }, []);
+
+    useEffect(() => {
+        // Initialize Google Maps Autocomplete once API is loaded
+        if (isMapApiLoaded && addressInputRef.current) {
             const autocomplete = new google.maps.places.Autocomplete(addressInputRef.current, {
                 types: ['address'],
                 componentRestrictions: { country: 'us' } // Restrict to US addresses
@@ -52,7 +81,7 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
                 }
             });
         }
-    }, []); // Run only once on mount
+    }, [isMapApiLoaded]);
 
     useEffect(() => {
         let interval: number | undefined;
@@ -193,6 +222,11 @@ const AddLeadPage: React.FC<AddLeadPageProps> = () => {
 
             <main className="flex-grow flex items-center justify-center p-4">
                 <div className="max-w-sm w-full mx-auto bg-white rounded-xl shadow-lg border border-slate-200/50 p-8">
+                    {apiKeyError && (
+                        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm p-3 rounded-md mb-6" role="alert">
+                            <p><strong className="font-semibold">Map features disabled.</strong> A valid Google Maps API key is required for address autocomplete. Please refer to the instructions in <code>index.html</code>.</p>
+                        </div>
+                    )}
                     <div className="text-left mb-6">
                         <h2 className="text-xl font-bold text-slate-800">Property Address Lookup</h2>
                         <p className="text-sm text-slate-500 mt-1">Enter a property address to generate an instant qualification dossier using real-time data.</p>
