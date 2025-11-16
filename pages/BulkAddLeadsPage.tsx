@@ -135,6 +135,7 @@ const BulkAddLeadsPage: React.FC = () => {
                             className="w-full h-40 px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm font-mono disabled:bg-slate-50"
                             disabled={isProcessing}
                         />
+                        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
                         <button
                             onClick={handleProcessList}
                             disabled={isProcessing || !addressList.trim()}
