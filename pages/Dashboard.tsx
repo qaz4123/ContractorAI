@@ -35,29 +35,16 @@ const Dashboard: React.FC = () => {
     statuses: [],
     showArchived: false,
   });
-  const [sortBy, setSortBy] = useState<'date-desc' | 'score-desc' | 'score-asc'>('date-desc');
 
   const filteredLeads = useMemo(() => {
     const activeLeads = filters.showArchived ? leads : leads.filter(lead => !lead.isArchived);
     
-    const filtered = activeLeads.filter(lead => {
+    return activeLeads.filter(lead => {
       const scoreMatch = filters.leadScores.length === 0 || filters.leadScores.includes(lead.leadScore);
       const statusMatch = filters.statuses.length === 0 || filters.statuses.includes(lead.status);
       return scoreMatch && statusMatch;
     });
-
-    // New sorting logic
-    const sorted = [...filtered];
-    switch (sortBy) {
-        case 'score-desc':
-            return sorted.sort((a, b) => (b.leadScoreValue || 0) - (a.leadScoreValue || 0));
-        case 'score-asc':
-            return sorted.sort((a, b) => (a.leadScoreValue || 0) - (b.leadScoreValue || 0));
-        case 'date-desc':
-        default:
-            return sorted; // Default order is already newest first from context
-    }
-  }, [leads, filters, sortBy]);
+  }, [leads, filters]);
 
   const activeLeads = useMemo(() => leads.filter(lead => !lead.isArchived), [leads]);
   
@@ -107,23 +94,7 @@ const Dashboard: React.FC = () => {
           
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-4 sm:px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white">
-                 <div className="flex flex-col sm:flex-row items-center gap-4">
-                     <h2 className="font-bold text-lg text-slate-800">Pipeline & Leads</h2>
-                     {view === 'list' && (
-                        <div>
-                             <select
-                                id="sort-by-dashboard"
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value as any)}
-                                className="text-sm p-1.5 border-slate-200 rounded-md focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50"
-                            >
-                                <option value="date-desc">Sort by Newest</option>
-                                <option value="score-desc">Sort by Score (High-Low)</option>
-                                <option value="score-asc">Sort by Score (Low-High)</option>
-                            </select>
-                        </div>
-                     )}
-                </div>
+                 <h2 className="font-bold text-lg text-slate-800">Pipeline & Leads</h2>
                  <div className="flex bg-slate-100 p-1 rounded-xl">
                     <button
                         onClick={() => setView('list')}

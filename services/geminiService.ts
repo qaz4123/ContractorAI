@@ -1,9 +1,6 @@
 
-
-
 import { GoogleGenAI, Type, GroundingChunk, Content } from "@google/genai";
 import { Dossier, QuoteLineItem, ProjectSuggestion, ChangeOrder } from "../types";
-// FIX: Corrected typo in uuid import alias from uuidvv4 to uuidv4 to resolve reference error.
 import { v4 as uuidv4 } from 'uuid';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -135,6 +132,20 @@ const projectPhasesSchema = {
     }
 };
 
+const voiceMemoAnalysisSchema = {
+    type: Type.OBJECT,
+    properties: {
+        transcription: { type: Type.STRING, description: "The full, accurate transcription of the audio memo." },
+        summary: { type: Type.STRING, description: "A concise, one or two-paragraph summary of the key points from the memo." },
+        actionItems: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: "A list of clear, actionable tasks or follow-up items mentioned in the memo. e.g., ['Send quote for the kitchen remodel', 'Confirm paint color with client by Friday']"
+        },
+    },
+    required: ["transcription", "summary", "actionItems"]
+};
+
 export const summarizeDossierForContractor = async (dossier: Dossier): Promise<string> => {
     try {
         const prompt = `
@@ -219,6 +230,41 @@ export const generateOutreachMessage = async (dossier: Dossier, type: 'email' | 
     }
 };
 
+export const analyzeVoiceMemo = async (audioBase64: string): Promise<{ transcription: string; summary: string; actionItems: string[] }> => {
+    try {
+        const audioPart = {
+            inlineData: {
+                mimeType: 'audio/webm', // The MediaRecorder in the component creates a webm blob
+                data: audioBase64,
+            },
+        };
+
+        const textPart = {
+            text: "Please transcribe the following audio memo from a contractor. After transcribing, provide a concise summary of the key points and extract a list of actionable follow-up items."
+        };
+
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: { parts: [textPart, audioPart] },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: voiceMemoAnalysisSchema,
+                systemInstruction: "You are an AI assistant for a construction contractor. Your task is to process voice memos. Respond ONLY with the JSON object defined in the schema."
+            }
+        });
+
+        const jsonText = response.text;
+        if (!jsonText) {
+            throw new Error("AI response was empty, expected JSON.");
+        }
+        return JSON.parse(jsonText.trim());
+
+    } catch (error) {
+        console.error("Error analyzing voice memo:", error);
+        throw new Error("Failed to analyze voice memo with AI. Please try again.");
+    }
+};
+
 export const generateProjectSuggestions = async (dossier: Dossier, industry?: string): Promise<ProjectSuggestion[]> => {
     try {
         const prompt = `Based on the following property dossier, suggest 3-4 high-impact renovation projects. For each suggestion, provide a concise data-driven reason, an estimated cost in USD, and an estimated Return on Investment (ROI) percentage. The suggestions should be tailored to the homeowner's demographics, property age, and financial details. ROI is calculated as (Increase in Home Value / Project Cost) * 100.
@@ -258,9 +304,9 @@ export const generateProjectSuggestions = async (dossier: Dossier, industry?: st
 };
 
 
-export const generateDossier = async (address: string, industry?: string, coords?: { lat: number; lng: number }): Promise<{ dossier: Dossier, groundingChunks: GroundingChunk[] | undefined }> => {
+export const generateDossier = async (address: string, industry?: string): Promise<{ dossier: Dossier, groundingChunks: GroundingChunk[] | undefined }> => {
   try {
-    const modelConfig: any = {
+    const groundedResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: `Gather up-to-date and accurate real-world property and demographic information for the US address: ${address}.`,
       config: {
@@ -269,20 +315,7 @@ export const generateDossier = async (address: string, industry?: string, coords
         **Prioritize finding the following essential information first: 1. Homeowner demographics (age, income). 2. Mortgage details (lender, balance). 3. Recent building permits.**
         All other information is secondary. Also, attempt to find a publicly listed, business-related email address or phone number for the owner.`
       },
-    };
-
-    if (coords) {
-        modelConfig.config.toolConfig = {
-            retrievalConfig: {
-                latLng: {
-                    latitude: coords.lat,
-                    longitude: coords.lng
-                }
-            }
-        };
-    }
-
-    const groundedResponse = await ai.models.generateContent(modelConfig);
+    });
 
     const context = groundedResponse.text;
     const groundingChunks = groundedResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
@@ -318,21 +351,13 @@ export const generateDossier = async (address: string, industry?: string, coords
   }
 };
 
-export const enrichDossier = async (dossier: Dossier, address: string, coords: { lat: number; lng: number }): Promise<{ dossier: Dossier, groundingChunks: GroundingChunk[] | undefined }> => {
+export const enrichDossier = async (dossier: Dossier, address: string): Promise<{ dossier: Dossier, groundingChunks: GroundingChunk[] | undefined }> => {
     try {
         const groundedResponse = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: `Perform a deep dive for the following US address: ${address}. Find information on: 1. The neighborhood's general 'vibe', walkability score, and perceived crime rate. 2. Ratings or reputation of the local school district. 3. General trends in recent building permits or renovation activity in the immediate area. 4. Try to find direct URLs to official public records for this property (e.g., County Auditor, Assessor, GIS map).`,
             config: {
                 tools: [{googleSearch: {}}, {googleMaps: {}}],
-                 toolConfig: {
-                    retrievalConfig: {
-                        latLng: {
-                            latitude: coords.lat,
-                            longitude: coords.lng
-                        }
-                    }
-                },
                 systemInstruction: "You are a real estate data enrichment AI. Your task is to find specific, qualitative and quantitative neighborhood data to enrich a property dossier."
             },
         });
@@ -410,7 +435,7 @@ export const enrichOwnerProfile = async (dossier: Dossier, address: string): Pro
         console.error("Error enriching owner profile:", error);
         throw new Error("Failed to enrich owner profile.");
     }
-};
+}
 
 export const getCoordsFromAddress = async (address: string): Promise<{ lat: number; lng: number }> => {
   try {

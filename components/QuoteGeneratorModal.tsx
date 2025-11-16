@@ -90,7 +90,6 @@ const QuoteGeneratorModal: React.FC<QuoteGeneratorModalProps> = ({ isOpen, onClo
     };
 
     const handleRemoveImage = (index: number) => {
-        URL.revokeObjectURL(images[index].preview);
         setImages(prev => prev.filter((_, i) => i !== index));
     };
     

@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { Lead, Status, FinancingStatus, Quote, LeadSource, ProjectSchedule, ProjectPhaseStatus, FinancialTransaction, FinancialTransactionType, ChangeOrder, ActivityLogItem, Dossier, GroundingChunk } from '../types';
+import { Lead, Status, FinancingStatus, Quote, LeadSource, ProjectSchedule, ProjectPhaseStatus, FinancialTransaction, FinancialTransactionType, ChangeOrder, ActivityLogItem } from '../types';
 import Header from '../components/Header';
 import CrmExportModal from '../components/CrmExportModal';
 import FinancingModal from '../components/FinancingModal';
@@ -21,6 +22,7 @@ import DataIntegrations from '../components/DataIntegrations';
 import OutreachGeneratorModal from '../components/OutreachGeneratorModal';
 import DossierChat from '../components/DossierChat';
 import MarketInsights from '../components/MarketInsights';
+import VoiceMemoModal from '../components/VoiceMemoModal';
 import { enrichDossier, summarizeDossierForContractor, generateDossier, enrichOwnerProfile } from '../services/geminiService';
 import { setCachedDossier } from '../services/dossierCache';
 import { calculateEquity, calculateLeadScore } from '../services/leadUtils';
@@ -73,6 +75,7 @@ const DossierPage: React.FC<DossierPageProps> = () => {
   const [isFinanceModalOpen, setFinanceModalOpen] = useState(false);
   const [isChangeOrderModalOpen, setChangeOrderModalOpen] = useState(false);
   const [isOutreachModalOpen, setIsOutreachModalOpen] = useState(false);
+  const [isVoiceMemoModalOpen, setIsVoiceMemoModalOpen] = useState(false);
   const [financeModalType, setFinanceModalType] = useState<FinancialTransactionType>(FinancialTransactionType.Expense);
   const [transactionToEdit, setTransactionToEdit] = useState<FinancialTransaction | null>(null);
   const [isEnriching, setIsEnriching] = useState(false);
@@ -149,6 +152,17 @@ const DossierPage: React.FC<DossierPageProps> = () => {
     addActivityLog(note);
   };
   
+  const handleAddMultipleActivities = (notes: string[]) => {
+      if (!notes || notes.length === 0) return;
+      const newActivities: ActivityLogItem[] = notes.map(note => ({
+          id: uuidv4(),
+          timestamp: new Date().toISOString(),
+          note,
+      }));
+      updateLead({ ...currentLead, activityLog: [...newActivities, ...currentLead.activityLog] });
+  };
+
+
   const handleDeleteActivity = (activityId: string) => {
     const updatedLog = currentLead.activityLog.filter(act => act.id !== activityId);
     updateLead({ ...currentLead, activityLog: updatedLog });
@@ -312,27 +326,23 @@ const DossierPage: React.FC<DossierPageProps> = () => {
   const handleEnrichDossier = async (type: 'neighborhood' | 'owner') => {
       setIsEnriching(true);
       try {
+          const enrichmentFunction = type === 'owner' ? enrichOwnerProfile : enrichDossier;
           const dossierToEnrich = { ...currentLead.dossier };
-          let enrichedDossier: Dossier;
-          let newChunks: GroundingChunk[] | undefined;
-          
-          if (type === 'owner') {
-             dossierToEnrich.ownerProfile = {
+
+          // Clear old data for the specific enrichment type
+          if (type === 'neighborhood') {
+              dossierToEnrich.neighborhoodInfo = undefined;
+              dossierToEnrich.schoolRatings = undefined;
+              dossierToEnrich.recentPermits = undefined;
+          } else {
+              dossierToEnrich.ownerProfile = {
                   ...dossierToEnrich.ownerProfile,
                   email: undefined,
                   phone: undefined
               };
-             const result = await enrichOwnerProfile(dossierToEnrich, currentLead.address);
-             enrichedDossier = result.dossier;
-             newChunks = result.groundingChunks;
-          } else { // neighborhood
-              dossierToEnrich.neighborhoodInfo = undefined;
-              dossierToEnrich.schoolRatings = undefined;
-              dossierToEnrich.recentPermits = undefined;
-              const result = await enrichDossier(dossierToEnrich, currentLead.address, currentLead.coords);
-              enrichedDossier = result.dossier;
-              newChunks = result.groundingChunks;
           }
+
+          const { dossier: enrichedDossier, groundingChunks: newChunks } = await enrichmentFunction(dossierToEnrich, currentLead.address);
           
           const mergedChunks = [...(currentLead.groundingChunks || []), ...(newChunks || [])];
           const uniqueChunks = mergedChunks.filter((chunk, index, self) => index === self.findIndex((c) => ((c.web?.uri === chunk.web?.uri && c.web?.uri !== undefined) || (c.maps?.uri === chunk.maps?.uri && c.maps?.uri !== undefined))));
@@ -340,20 +350,7 @@ const DossierPage: React.FC<DossierPageProps> = () => {
           const note = `Dossier enriched with ${type} data.`;
           const newActivity = { id: uuidv4(), timestamp: new Date().toISOString(), note };
           
-          // Recalculate score after enrichment
-          const newEquity = calculateEquity(enrichedDossier);
-          const { score: newScore, value: newScoreValue, uncertainty: newUncertainty } = calculateLeadScore(enrichedDossier, newEquity);
-
-          updateLead({ 
-              ...currentLead, 
-              dossier: enrichedDossier, 
-              groundingChunks: uniqueChunks, 
-              activityLog: [newActivity, ...currentLead.activityLog],
-              estimatedEquity: newEquity,
-              leadScore: newScore,
-              leadScoreValue: newScoreValue,
-              leadScoreUncertainty: newUncertainty,
-          });
+          updateLead({ ...currentLead, dossier: enrichedDossier, groundingChunks: uniqueChunks, activityLog: [newActivity, ...currentLead.activityLog] });
       } catch (error) {
           alert(`Failed to enrich dossier with ${type} data. Please try again.`);
       } finally {
@@ -367,7 +364,7 @@ const DossierPage: React.FC<DossierPageProps> = () => {
       }
       setIsRefreshing(true);
       try {
-          const { dossier: newDossier, groundingChunks: newChunks } = await generateDossier(currentLead.address, user.industry, currentLead.coords);
+          const { dossier: newDossier, groundingChunks: newChunks } = await generateDossier(currentLead.address, user.industry);
           setCachedDossier(currentLead.address, newDossier);
           
           const newEquity = calculateEquity(newDossier);
@@ -437,7 +434,7 @@ const DossierPage: React.FC<DossierPageProps> = () => {
           
           <div className="bg-gradient-to-br from-indigo-700 to-slate-800 p-4 sm:p-5 rounded-lg shadow-md text-white">
             <h2 className="text-lg font-semibold mb-2 flex items-center gap-2 text-indigo-100"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>AI Summary</h2>
-            {isSummaryLoading ? (<div className="space-y-2 animate-pulse"><div className="h-4 bg-slate-600 rounded w-5/6"></div><div className="h-4 bg-slate-600 rounded w-4/6"></div><div className="h-4 bg-slate-600 rounded w-3/4"></div></div>) : (<ul className="list-disc list-inside space-y-2 text-indigo-200 text-sm font-medium pl-1">{(aiSummary ?? '').split('\n').map((line, i) => line.trim() && <li key={i}>{line.replace(/^- /, '')}</li>)}</ul>)}
+            {isSummaryLoading ? (<div className="space-y-2 animate-pulse"><div className="h-4 bg-slate-600 rounded w-5/6"></div><div className="h-4 bg-slate-600 rounded w-4/6"></div><div className="h-4 bg-slate-600 rounded w-3/4"></div></div>) : (<ul className="list-disc list-inside space-y-2 text-indigo-200 text-sm font-medium pl-1">{aiSummary.split('\n').map((line, i) => line.trim() && <li key={i}>{line.replace(/^- /, '')}</li>)}</ul>)}
           </div>
 
           <MarketInsights lead={currentLead} />
@@ -494,7 +491,7 @@ const DossierPage: React.FC<DossierPageProps> = () => {
           <ProjectFinances transactions={currentLead.finances || []} onAddTransaction={handleOpenFinanceModal} onEditTransaction={handleOpenEditFinanceModal} onDeleteTransaction={handleDeleteTransaction} isArchived={currentLead.isArchived} formatCurrency={formatCurrency} />
           <ProjectScheduleComponent lead={currentLead} onEditClick={() => setScheduleModalOpen(true)} onUpdatePhaseStatus={handlePhaseStatusUpdate} />
           <ChangeOrders lead={currentLead} onCreateClick={() => setChangeOrderModalOpen(true)} onDelete={handleDeleteChangeOrder} formatCurrency={formatCurrency} />
-          <ActivityLog activities={currentLead.activityLog} onAddActivity={handleAddActivity} onDeleteActivity={handleDeleteActivity} isArchived={currentLead.isArchived} onAddToCalendarClick={() => setCalendarModalOpen(true)} />
+          <ActivityLog activities={currentLead.activityLog} onAddActivity={handleAddActivity} onDeleteActivity={handleDeleteActivity} isArchived={currentLead.isArchived} onAddToCalendarClick={() => setCalendarModalOpen(true)} onAddVoiceMemoClick={() => setIsVoiceMemoModalOpen(true)} />
 
           {currentLead.groundingChunks && currentLead.groundingChunks.length > 0 && (
             <div className="bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-slate-200">
@@ -522,6 +519,7 @@ const DossierPage: React.FC<DossierPageProps> = () => {
       <FinancialTransactionModal isOpen={isFinanceModalOpen} onClose={() => { setFinanceModalOpen(false); setTransactionToEdit(null); }} onSave={handleSaveTransaction} transactionType={financeModalType} transactionToEdit={transactionToEdit} />
       <ChangeOrderModal isOpen={isChangeOrderModalOpen} onClose={() => setChangeOrderModalOpen(false)} onSave={handleSaveChangeOrder} />
       <OutreachGeneratorModal isOpen={isOutreachModalOpen} onClose={() => setIsOutreachModalOpen(false)} lead={currentLead} />
+      <VoiceMemoModal isOpen={isVoiceMemoModalOpen} onClose={() => setIsVoiceMemoModalOpen(false)} onSave={handleAddMultipleActivities} />
     </div>
   );
 };
